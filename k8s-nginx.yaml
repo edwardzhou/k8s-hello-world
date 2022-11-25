@@ -1,0 +1,47 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    name: web
+    targetPort: nginx-port
+  selector:
+    app: nginx
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: edwardzhou/nginx:1.21.3-alpine
+        ports:
+        - containerPort: 80
+          name: nginx-port
+        volumeMounts:
+          - name: hello-world-configmap-files
+            mountPath: "/etc/nginx/conf.d/vhosts/hello-world.com.conf"
+            subPath: hello-world.com.conf
+      volumes:
+        - name: hello-world-configmap-files
+          configMap:
+            name: hello-world-configmap-files

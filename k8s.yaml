@@ -1,0 +1,126 @@
+apiVersion: v1
+data:
+  hello-world.com.conf: "\nupstream hello-world {\n    server hello-world:4000;\n}\n\nserver
+    {\n    # listen 443 ssl;\n    listen 80;\n    index index.html index.htm index.php;\n
+    \   server_name *.leangoo.com \"\" _;\n    large_client_header_buffers 4 1m;\n
+    \   root /usr/share/nginx/html;\n    \n    # access_log /var/log/nginx/private-access.log;\n
+    \   # error_log /var/log/nginx/private-error.log;\n\n    error_page 497 https://$http_host$request_uri;\n\n
+    \   location / {\n        proxy_pass http://hello-world/;\n        proxy_set_header
+    X-NginX-Proxy    true;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header
+    Host $host;\n        proxy_set_header x-port $proxy_port;\n        proxy_set_header
+    HttpHost $http_host;\n        proxy_set_header X-Request-Uri $request_uri;\n        proxy_set_header
+    X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_connect_timeout 60;\n
+    \       proxy_read_timeout 120;\n        proxy_send_timeout 60;\n    }\n\n    error_page
+    404 /404.html;\n    error_page 500 502 503 504  /50x.html;\n\n    location = /50x.html
+    {\n        root /usr/share/nginx/html;\n    }\n\n    location = /404.html {\n
+    \       root /usr/share/nginx/html;\n    }\n\n}"
+kind: ConfigMap
+metadata:
+  name: hello-world-configmap-files-fd4tf44mkc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: hello-world
+  name: hello-world
+spec:
+  ports:
+  - port: 4000
+    targetPort: phx-port
+  selector:
+    app: hello-world
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  ports:
+  - name: web
+    port: 80
+    targetPort: nginx-port
+  selector:
+    app: nginx
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hello-world
+  name: hello-world
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - image: edwardzhou/hello-world:1.0
+        name: hello-world
+        ports:
+        - containerPort: 4000
+          name: phx-port
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx
+  name: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - image: edwardzhou/nginx:1.21.3-alpine
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: nginx-port
+        volumeMounts:
+        - mountPath: /etc/nginx/conf.d/vhosts/hello-world.com.conf
+          name: hello-world-configmap-files
+          subPath: hello-world.com.conf
+      volumes:
+      - configMap:
+          name: hello-world-configmap-files-fd4tf44mkc
+        name: hello-world-configmap-files
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubesphere.io/creator: admin
+    nginx.ingress.kubernetes.io/upstream-vhost: new-t.leangoo.com
+    proxy-real-ip-cide: 127.0.0.6/32,10.233.107.21/32
+  labels:
+    app.kubernetes.io/name: bookinfo
+    app.kubernetes.io/version: v1
+  name: leangoo-ingress
+  namespace: demo-test
+spec:
+  rules:
+  - http:
+      paths:
+      - backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
