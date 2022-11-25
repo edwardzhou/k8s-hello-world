@@ -1,15 +1,20 @@
 kind: Ingress
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: leangoo-ingress
+  name: helloworld-ingress
   namespace: demo-test
   labels:
-    app.kubernetes.io/name: bookinfo
+    app.kubernetes.io/name: helloworld
     app.kubernetes.io/version: v1
   annotations:
-    kubesphere.io/creator: admin
-    nginx.ingress.kubernetes.io/upstream-vhost: new-t.leangoo.com
     proxy-real-ip-cide: "127.0.0.6/32,10.233.107.21/32"
+    nginx.org/compute-full-forwarded-for: 'true'
+    nginx.org/forwared-for-header: X-Forwarded-For
+    nginx.org/use-forwareded-headers: 'true'
+    nginx.org/use-proxy-protocol: 'true'
+    proxy.istio.io/config: '{"gatewayTopology" : { "numTrustedProxies": 1, "forwardClientCertDetails": APPEND_FORWARD } }'
+    enable-real-ip: 'true'
+    enable-underscores-in-headers: 'true'
 spec:
   rules:
     - http:
